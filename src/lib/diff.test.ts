@@ -58,6 +58,17 @@ describe("normalizeLines", () => {
     const lines = normalizeLines("Plan Pro: USD 99\nPlan Pro: USD 99\nSoporte 24/7");
     expect(lines).toEqual(["Plan Pro: USD 99", "Soporte 24/7"]);
   });
+
+  it("keeps prices even when the site formats them like a navigation bar", () => {
+    // Páginas de reservas (Setmore y similares) publican cada servicio así:
+    // tres segmentos y pocas palabras, pero el precio es el dato que buscamos.
+    const lines = normalizeLines(
+      "Duration:1 hr·Details·. Price:$75,000\nDuración:2h·Detalles·. Precio:30.000 $",
+    );
+
+    expect(lines.some((line) => line.includes("75,000"))).toBe(true);
+    expect(lines.some((line) => line.includes("30.000 $"))).toBe(true);
+  });
 });
 
 describe("hashContent", () => {
@@ -104,6 +115,9 @@ describe("isPriceLine", () => {
     "Desde $12.999",
     "€ 49 por usuario",
     "Precio: consultar",
+    // Páginas de reservas: el símbolo viene pegado tras dos puntos.
+    "Duration:1 hr·Details·. Price:$75,000",
+    "Duración:25min·Detalles·. Precio:20.000 $",
   ])("detects %s", (line) => {
     expect(isPriceLine(line)).toBe(true);
   });

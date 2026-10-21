@@ -67,18 +67,42 @@ y `/dashboard` muestran un aviso de configuración pendiente en lugar de un erro
 ### 3. Primer cliente (setup concierge, semi-manual)
 
 Para demos y pruebas end-to-end hay un atajo idempotente (crea el usuario de auth,
-el cliente y dos competidores reales):
+el cliente y los competidores reales del perfil):
 
 ```bash
-npm run seed:demo                                   # usa ADMIN_EMAIL como casilla del cliente
-SEED_EMAIL=persona@empresa.com npm run seed:demo    # macOS / Linux
+npm run seed:demo                                    # perfil "saas" (Notion + Linear)
+SEED_PROFILE=salon-berlin npm run seed:demo          # perfil "salon-berlin"
+SEED_EMAIL=persona@empresa.com npm run seed:demo     # cambia la casilla del cliente
 ```
 
-En PowerShell: `$env:SEED_EMAIL="persona@empresa.com"; npm run seed:demo`.
+En PowerShell: `$env:SEED_PROFILE="salon-berlin"; npm run seed:demo`.
+
+Los perfiles viven en `scripts/seed-demo.ts` (`PROFILES`) y cada uno es un caso real:
+
+| Perfil | Empresa | Competidores |
+| --- | --- | --- |
+| `saas` | Acme SaaS | Notion, Linear (páginas de precios propias) |
+| `salon-berlin` | Salón Berlín, barbería en Palermo | El Gran Patrón, Alcatraz Shave Company, Hairhood Studio |
+
+> La URL de un competidor tiene que ser su página, **no un directorio**. En barberías
+> el precio suele estar en la página de reservas (Setmore, AgendaPro, Fresha): es
+> contenido público, scrapeable, y ahí está la lista de precios completa.
+
+`clients.user_id` es único (un cliente = un usuario de auth), así que para sumar un
+caso nuevo sin pisar el anterior hace falta otra dirección. Cuando el dueño todavía
+no tiene casilla propia, `SEED_LOGIN` / `--login` separa la casilla de **acceso** de
+la de **entrega**:
+
+```bash
+$env:SEED_LOGIN="yo+cliente@gmail.com"; $env:SEED_PROFILE="salon-berlin"; npm run seed:demo
+```
+
+> El sandbox de Resend (`onboarding@resend.dev`) solo entrega al dueño **exacto** de la
+> cuenta: `yo+cliente@gmail.com` sirve para el login, no como destinatario.
 
 > npm 10 en Windows se queda con `--force` antes de pasar los argumentos al script. Por eso
 > los comandos que necesitan flags tienen script propio (`cron:extract:force`,
-> `cron:digest:force`) y el seed lee el email de `SEED_EMAIL`.
+> `cron:digest:force`) y el seed lee los datos de variables `SEED_*`.
 
 A mano: paso 1 y 2 del bloque SQL de abajo.
 
@@ -97,11 +121,31 @@ select id, 'Globex', 'https://globex.com/pricing', 7 from public.clients where e
 3. Corré el primer rastreo: `npm run cron:extract:force` (la primera corrida guarda
    la línea base; el análisis aparece a partir de la segunda).
 
+#### Ejemplo comercial con datos reales
+
+Un cliente recién dado de alta solo tiene línea base, así que el primer digest dice
+"sin cambios" hasta que un competidor mueva algo (puede tardar semanas). Para mostrar
+el producto igual, con datos reales:
+
+```bash
+npm run demo:preview                        # imprime el análisis y el email, no envía nada
+DEMO_SEND=1 npm run demo:preview            # además lo manda a la casilla del cliente
+```
+
+- Parte de la línea base **real** de Firecrawl de ese competidor.
+- Construye una "foto previa" con los precios corridos `-10%` (`DEMO_PCT` para cambiarlo)
+  y la compara contra la página real de hoy: **solo se simula el pasado**; el contenido
+  entrante y el análisis son los reales.
+- No escribe en `extractions`, `analyses` ni `alerts`, así que el historial del cliente
+  queda limpio y no aparecen alertas de algo que no pasó.
+- Selección: `DEMO_COMPANY`, `DEMO_COMPETITOR`, `DEMO_TO`, `DEMO_PCT` (o `--company=`,
+  `--competitor=`, `--to=`, `--pct=`).
+
 ### 4. Correr
 
 ```bash
 npm run dev          # http://localhost:3000
-npm test             # 83 tests de la lógica pura
+npm test             # 86 tests de la lógica pura
 npm run typecheck
 npm run build
 ```
@@ -133,6 +177,10 @@ competidor activo y vencido (crawl_interval_days)
                  └─ resultado     → analyses(...)
                       └─ priority = ALTA_PRIORIDAD → alerts + email inmediato
 ```
+
+> Una línea con dinero nunca se descarta como navegación, aunque el sitio la publique
+> como `Duration:1 hr·Details·Price:$75.000` (páginas de reservas tipo Setmore). Antes
+> se perdía y un cambio de precio real podía pasar inadvertido.
 
 ## Cron
 
@@ -190,10 +238,13 @@ migración `20261021000300_message_ids.sql` guardamos también `provider_message
 lo que permite auditar la entrega real:
 
 ```bash
-npm run check:delivery                  # últimos 20 emails y su last_event
-npm run check:delivery -- --limit=50
-npm run check:delivery -- --id=<uuid>   # detalle de uno puntual
+npm run check:delivery                                          # últimos emails y su last_event
+npx tsx --env-file=.env scripts/check-delivery.ts --limit=50
+npx tsx --env-file=.env scripts/check-delivery.ts --id=<uuid>  # detalle de uno puntual
 ```
+
+`--id` también audita envíos que no pasaron por la base (por ejemplo `demo:preview`), porque
+consulta Resend directo.
 
 Estados que devuelve Resend: `sent` (aceptado, sin confirmación del destinatario),
 `delivered`, `bounced`, `complained`. Un email que sigue en `sent` pasados unos minutos
@@ -206,11 +257,13 @@ Si la alerta ya está guardada en `alerts` no hace falta volver a scrapear para 
 ```bash
 npm run alerts:resend:preview                      # quién lo recibe y qué asunto
 npm run alerts:resend                              # reenvía la última alerta
-npm run alerts:resend -- --id=<uuid>               # una puntual
+$env:ALERT_ID="<uuid>"; npm run alerts:resend      # una puntual
 ```
 
-Ojo: npm intercepta `--dry-run` y `--force` antes de pasarlos al script, por eso el
-preview es `--preview` (o `DRY_RUN=1`) y los forzados son alias propios (`cron:*:force`).
+Ojo: npm intercepta los flags antes de pasarlos al script (`--dry-run`, `--force`, `--id`,
+`--limit`), por eso el preview es `--preview` (o `DRY_RUN=1`), los forzados son alias propios
+(`cron:*:force`), la alerta puntual va por `ALERT_ID` y los scripts de auditoría se invocan
+con `npx tsx --env-file=.env scripts/...`.
 
 Los emails llevan el link al dashboard. `NEXT_PUBLIC_APP_URL` es local en desarrollo (lo
 necesitan los magic links), así que para que un envío hecho desde tu máquina no lleve

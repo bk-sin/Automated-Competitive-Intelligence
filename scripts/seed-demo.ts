@@ -5,16 +5,45 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
  * end to end against a live Supabase project:
  *
  *   npm run seed:demo -- --email=demo@empresa.com
+ *   npm run seed:demo -- --profile=salon-berlin
  *
  * Idempotent: re-running reuses the auth user, the client row and the
  * competitors (upsert on `(client_id, url)`), and never deletes history.
  * Requires the service role / secret key (it bypasses RLS on purpose).
+ *
+ * Cada perfil es un caso real: la URL tiene que ser la pagina del competidor,
+ * no un directorio ni un listado agregado (el diff seria ruido).
  */
 
-const DEMO_COMPETITORS = [
-  { name: "Notion", url: "https://www.notion.com/pricing", interval: 7 },
-  { name: "Linear", url: "https://linear.app/pricing", interval: 7 },
-];
+type SeedProfile = {
+  company: string;
+  goals: string;
+  competitors: Array<{ name: string; url: string; interval: number }>;
+};
+
+const PROFILES: Record<string, SeedProfile> = {
+  saas: {
+    company: "Acme SaaS",
+    goals: "Precios de los planes Pro y Enterprise, y mensajes de posicionamiento",
+    competitors: [
+      { name: "Notion", url: "https://www.notion.com/pricing", interval: 7 },
+      { name: "Linear", url: "https://linear.app/pricing", interval: 7 },
+    ],
+  },
+  // Barberia en Palermo. Ninguno de los tres publica una pagina de precios
+  // propia salvo El Gran Patron; Alcatraz y Hairhood los publican en su pagina
+  // de reservas (Setmore), que es contenido publico y scrapeable.
+  "salon-berlin": {
+    company: "Salón Berlín",
+    goals:
+      "Precios de corte, barba y rituales; combos y promociones; posicionamiento de barbería clásica en Palermo",
+    competitors: [
+      { name: "El Gran Patrón", url: "https://elgranpatron.com/", interval: 7 },
+      { name: "Alcatraz Shave Company", url: "https://barberiaalcatraz.setmore.com/", interval: 7 },
+      { name: "Hairhood Studio", url: "https://hairhoodstudio.setmore.com/", interval: 7 },
+    ],
+  },
+};
 
 function readFlag(name: string): string | undefined {
   const prefix = `--${name}=`;
@@ -42,6 +71,16 @@ function resolveEmail(): string {
   }
 
   return "";
+}
+
+/**
+ * `clients.user_id` es unico: un cliente = un usuario de auth. Cuando el dueño
+ * todavia no tiene casilla propia, la de entrega y la de acceso pueden diferir
+ * (`--login`), sin inventar un buzon que rebote.
+ */
+function resolveLogin(deliveryEmail: string): string {
+  const value = (readFlag("login") ?? process.env.SEED_LOGIN ?? "").trim();
+  return value && EMAIL_PATTERN.test(value) ? value : deliveryEmail;
 }
 
 function readEnv(name: string, alias?: string): string {
@@ -88,21 +127,36 @@ async function main(): Promise<void> {
     return;
   }
 
-  const goals =
-    readFlag("goals") ?? "Precios de los planes Pro y Enterprise, y mensajes de posicionamiento";
-  const company = readFlag("company") ?? "Acme SaaS";
+  const login = resolveLogin(email);
+
+  const profileName = readFlag("profile") ?? process.env.SEED_PROFILE ?? "saas";
+  const profile = PROFILES[profileName];
+
+  if (!profile) {
+    console.error(
+      `Perfil desconocido: ${profileName}. Disponibles: ${Object.keys(PROFILES).join(", ")}`,
+    );
+    process.exitCode = 1;
+    return;
+  }
+
+  const goals = readFlag("goals") ?? profile.goals;
+  const company = readFlag("company") ?? profile.company;
+  const competitors = profile.competitors;
 
   const admin = createClient(url, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
   console.log(`Proyecto: ${url}`);
-  console.log(`Cliente demo: ${company} <${email}>\n`);
+  console.log(`Cliente demo: ${company} <${email}>`);
+  if (login !== email) console.log(`Acceso al portal: ${login}\n`);
+  else console.log("");
 
-  let user = await findUserByEmail(admin, email);
+  let user = await findUserByEmail(admin, login);
 
   if (!user) {
-    const { data, error } = await admin.auth.admin.createUser({ email, email_confirm: true });
+    const { data, error } = await admin.auth.admin.createUser({ email: login, email_confirm: true });
     if (error) throw new Error(`No se pudo crear el usuario: ${error.message}`);
     user = data.user;
     console.log(`- Usuario auth creado: ${user.id}`);
@@ -151,7 +205,7 @@ async function main(): Promise<void> {
   }
 
   const { error: competitorError } = await admin.from("competitors").upsert(
-    DEMO_COMPETITORS.map((competitor) => ({
+    competitors.map((competitor) => ({
       client_id: clientId,
       name: competitor.name,
       url: competitor.url,
@@ -163,14 +217,14 @@ async function main(): Promise<void> {
 
   if (competitorError) throw new Error(`Upsert de competitors falló: ${competitorError.message}`);
 
-  console.log(`- Competidores cargados: ${DEMO_COMPETITORS.map((c) => c.name).join(", ")}`);
+  console.log(`- Competidores cargados: ${competitors.map((c) => `${c.name} <${c.url}>`).join(", ")}`);
 
   console.log(
     "\nSiguiente paso:\n" +
       "  1. npm run cron:extract -- --force          (línea base, sin análisis)\n" +
       "  2. npm run cron:extract -- --force          (segunda corrida: diff + análisis)\n" +
       "  3. npm run cron:digest -- --force           (envía el digest por Resend)\n" +
-      `\nPara entrar al portal: /login con ${email} (magic link).`,
+      `\nPara entrar al portal: /login con ${login} (magic link).`,
   );
 }
 

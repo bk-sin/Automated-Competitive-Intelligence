@@ -50,7 +50,7 @@ const NOISE_PATTERNS: readonly RegExp[] = [
 const SEPARATOR_PATTERN = /^[-=_*~·•\s]{3,}$/;
 const IMAGE_ONLY_PATTERN = /^!\[[^\]]*\]\([^)]*\)$/;
 const PRICE_PATTERN =
-  /(?:^|\s)(?:\$|€|£)\s?\d|\b\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?\s?(?:usd|ars|mxn|clp|cop|pen|eur|u\$s)\b|\b(?:usd|ars|mxn|clp|cop|pen|eur)\s?\d|\bprecios?\b/i;
+  /(?:^|[^a-z0-9])\s?(?:\$|€|£)\s?\d|\b\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?\s?(?:usd|ars|mxn|clp|cop|pen|eur|u\$s)\b|\b(?:usd|ars|mxn|clp|cop|pen|eur)\s?\d|\bprecios?\b/i;
 
 /** Removes markdown link targets/emphasis so only readable text is compared. */
 export function stripMarkdownDecorations(value: string): string {
@@ -63,11 +63,24 @@ export function stripMarkdownDecorations(value: string): string {
     .trim();
 }
 
+/**
+ * Dinero en cualquier formato (`$75000`, `$75,000`, `30.000 $`, `ARS 5000`).
+ * Sirve para blindar los precios frente al heurístico de navegación: las páginas
+ * de reservas publican cada servicio como
+ * `Duration:1 hr·Details·. Price:$75,000`, que parece una barra de menú y antes
+ * se descartaba antes de comparar (un cambio de precio real pasaba inadvertido).
+ */
+const MONEY_PATTERN =
+  /[$€£]\s?\d|\d[\d.,]*\s?[$€£]|\b(?:usd|ars|mxn|clp|cop|pen|eur)\s?\d|\d\s?(?:usd|ars|mxn|clp|cop|pen|eur)\b/i;
+
 function isNoiseLine(line: string): boolean {
   if (!line) return true;
   if (SEPARATOR_PATTERN.test(line)) return true;
   if (IMAGE_ONLY_PATTERN.test(line)) return true;
   if (NOISE_PATTERNS.some((pattern) => pattern.test(line))) return true;
+
+  // Una línea con dinero nunca es navegación: es la materia prima del producto.
+  if (MONEY_PATTERN.test(line)) return false;
 
   // "Home | Productos | Contacto" style bars: 3+ short segments, no sentence.
   const segments = line.split(/\s*[|·•/]\s*/).filter(Boolean);
