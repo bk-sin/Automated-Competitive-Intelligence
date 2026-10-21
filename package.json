@@ -16,7 +16,8 @@
     "cron:extract": "tsx --env-file=.env scripts/run-extraction.ts",
     "cron:digest": "tsx --env-file=.env scripts/run-digest.ts",
     "cron:digest:force": "tsx --env-file=.env scripts/run-digest.ts --force",
-    "smoke:firecrawl": "tsx --env-file=.env scripts/smoke-firecrawl.ts"
+    "smoke:firecrawl": "tsx --env-file=.env scripts/smoke-firecrawl.ts",
+    "check:env": "tsx scripts/check-env.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",

@@ -43,6 +43,22 @@ Ver `.env.example`. Mínimo para el portal: `NEXT_PUBLIC_SUPABASE_URL`,
 > El nombre histórico `FIRECLAW_API_KEY` (typo) se acepta como fallback de
 > `FIRECRAWL_API_KEY` en `src/lib/env.ts`, para no romper deploys existentes.
 
+Verificá el estado real de la configuración en cualquier momento:
+
+```bash
+npm run check:env            # valida formato y prueba Supabase, LLM y Resend en vivo
+npm run check:env -- --deep  # además scrapea example.com (gasta 1 crédito)
+```
+
+Marca `[FALTA]` cada variable vacía **o que todavía tenga el placeholder del
+`.env.example`** (por ejemplo `https://your-project.supabase.co`), valida que las
+migraciones estén aplicadas consultando `clients`, `onboarding_requests` y `digests`,
+comprueba que el dominio de `EMAIL_FROM` esté verificado en Resend y no gasta tokens
+de LLM. Sale con código 1 si hay bloqueos, así que sirve en CI.
+
+Si el portal se despliega sin las claves públicas de Supabase, `/login`, `/onboarding`
+y `/dashboard` muestran un aviso de configuración pendiente en lugar de un error 500.
+
 ### 3. Primer cliente (setup concierge, semi-manual)
 
 1. En Supabase → Authentication → Invite, creá el usuario del cliente.

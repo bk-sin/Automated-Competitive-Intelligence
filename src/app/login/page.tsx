@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { ConfigNotice } from "@/components/config-notice";
+import { isPublicEnvConfigured } from "@/lib/env";
 import { signInAction } from "./actions";
 
 export const metadata: Metadata = {
@@ -11,6 +13,15 @@ type LoginPageProps = {
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const { error, sent } = await searchParams;
+
+  if (!isPublicEnvConfigured()) {
+    return (
+      <ConfigNotice
+        title="El acceso todavía no está conectado"
+        description="Los magic links necesitan un proyecto de Supabase configurado."
+      />
+    );
+  }
 
   return (
     <>

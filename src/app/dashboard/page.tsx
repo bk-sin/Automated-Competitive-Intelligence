@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ConfigNotice } from "@/components/config-notice";
+import { isPublicEnvConfigured } from "@/lib/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { AlertPriority, AnalysisRow, ClientRow, CompetitorRow } from "@/lib/types";
 
@@ -45,6 +47,15 @@ function formatDate(value: string, timeZone: string): string {
 }
 
 export default async function DashboardPage() {
+  if (!isPublicEnvConfigured()) {
+    return (
+      <ConfigNotice
+        title="El panel todavía no está conectado"
+        description="Falta configurar el proyecto de Supabase en las variables de entorno."
+      />
+    );
+  }
+
   const supabase = await createSupabaseServerClient();
 
   const {

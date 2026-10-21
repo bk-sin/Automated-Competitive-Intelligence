@@ -82,3 +82,11 @@ export function resetServerEnvCache(): void {
   cached = null;
   cachedPublic = null;
 }
+
+/**
+ * Cheap, non-throwing check used by pages so a deployment without Supabase
+ * credentials shows a setup notice instead of crashing with HTTP 500.
+ */
+export function isPublicEnvConfigured(): boolean {
+  return publicEnvSchema.safeParse(process.env).success;
+}

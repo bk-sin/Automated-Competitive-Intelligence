@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ConfigNotice } from "@/components/config-notice";
+import { isPublicEnvConfigured } from "@/lib/env";
 import { submitOnboardingAction } from "./actions";
 
 export const metadata: Metadata = {
@@ -13,6 +15,15 @@ type OnboardingPageProps = {
 
 export default async function OnboardingPage({ searchParams }: OnboardingPageProps) {
   const { error } = await searchParams;
+
+  if (!isPublicEnvConfigured()) {
+    return (
+      <ConfigNotice
+        title="El formulario todavía no está conectado"
+        description="Necesitamos el proyecto de Supabase para registrar tu solicitud."
+      />
+    );
+  }
 
   return (
     <>
