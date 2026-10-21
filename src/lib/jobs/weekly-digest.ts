@@ -104,7 +104,7 @@ export async function runWeeklyDigestCycle(
       env,
       client,
       now,
-      appUrl: env.NEXT_PUBLIC_APP_URL,
+      appUrl: env.EMAIL_LINK_BASE_URL ?? env.NEXT_PUBLIC_APP_URL,
     });
 
     if (detail.outcome === "sent") report.sent += 1;

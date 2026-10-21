@@ -199,6 +199,24 @@ Estados que devuelve Resend: `sent` (aceptado, sin confirmación del destinatari
 `delivered`, `bounced`, `complained`. Un email que sigue en `sent` pasados unos minutos
 **no llegó**: revisar spam, reputación del dominio o la restricción del sandbox.
 
+Si la alerta ya está guardada en `alerts` no hace falta volver a scrapear para reenviarla:
+`alerts:resend` toma `subject` y `body` de la base, la manda y actualiza `sent_at` y
+`provider_message_id`.
+
+```bash
+npm run alerts:resend:preview                      # quién lo recibe y qué asunto
+npm run alerts:resend                              # reenvía la última alerta
+npm run alerts:resend -- --id=<uuid>               # una puntual
+```
+
+Ojo: npm intercepta `--dry-run` y `--force` antes de pasarlos al script, por eso el
+preview es `--preview` (o `DRY_RUN=1`) y los forzados son alias propios (`cron:*:force`).
+
+Los emails llevan el link al dashboard. `NEXT_PUBLIC_APP_URL` es local en desarrollo (lo
+necesitan los magic links), así que para que un envío hecho desde tu máquina no lleve
+`http://localhost:3000` definí `EMAIL_LINK_BASE_URL` con la URL pública. En Vercel se
+omite: cae en `NEXT_PUBLIC_APP_URL`, que ya apunta al dominio de producción.
+
 En una cuenta Resend nueva los primeros envíos suelen quedarse en `sent` aunque después
 todo entregue en segundos: el receptor difiere al remitente sin reputación. Si `check:delivery`
 muestra ese patrón, el problema es el remitente, no el código.

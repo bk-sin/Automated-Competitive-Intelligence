@@ -21,7 +21,9 @@
     "smoke:llm": "tsx --env-file=.env scripts/smoke-llm.ts",
     "seed:demo": "tsx --env-file=.env scripts/seed-demo.ts",
     "check:env": "tsx scripts/check-env.ts",
-    "check:delivery": "tsx --env-file=.env scripts/check-delivery.ts"
+    "check:delivery": "tsx --env-file=.env scripts/check-delivery.ts",
+    "alerts:resend": "tsx --env-file=.env scripts/resend-alert.ts",
+    "alerts:resend:preview": "tsx --env-file=.env scripts/resend-alert.ts --preview"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",

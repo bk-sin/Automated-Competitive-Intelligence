@@ -44,6 +44,13 @@ const serverEnvSchema = z.object({
   ADMIN_EMAIL: z.email(),
   CRON_SECRET: z.string().min(16, "CRON_SECRET must be at least 16 chars"),
   NEXT_PUBLIC_APP_URL: z.url().default("http://localhost:3000"),
+  /**
+   * Base para los links que viajan en los emails. En local
+   * `NEXT_PUBLIC_APP_URL` apunta a localhost (lo necesitan los magic links),
+   * asi que esto permite mandar emails con el dominio publico desde la maquina
+   * de desarrollo. Si falta, se usa `NEXT_PUBLIC_APP_URL`.
+   */
+  EMAIL_LINK_BASE_URL: z.url().optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
