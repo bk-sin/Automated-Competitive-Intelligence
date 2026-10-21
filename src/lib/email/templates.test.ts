@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { renderHighPriorityAlert, renderWeeklyDigest } from "./templates";
+import { renderHighPriorityAlert, renderProspectingAudit, renderWeeklyDigest } from "./templates";
 import type { Finding } from "../types";
 
 const TZ = "America/Argentina/Buenos_Aires";
@@ -135,6 +135,93 @@ describe("renderHighPriorityAlert", () => {
     expect(body).toContain("https://globex.com/precios");
     expect(body).toContain("- Precio: Plan Pro: USD 119");
     expect(body).toContain("Afecta directamente al plan");
+    expect(body).not.toMatch(/<[a-z/][^>]*>/i);
+  });
+});
+
+describe("renderProspectingAudit", () => {
+  const BASE = {
+    prospectName: "Acme SaaS",
+    contactName: "Ana",
+    days: 30,
+    baselineLabel: "15/09/2026",
+    senderName: "Brian",
+    generatedAt: new Date("2026-10-21T12:00:00.000Z"),
+    timeZone: TZ,
+  };
+
+  it("names only the competitors that actually changed", () => {
+    const { subject, body } = renderProspectingAudit({
+      ...BASE,
+      findings: [FINDING],
+      silentCompetitors: ["Initech"],
+      unavailableCompetitors: [],
+    });
+
+    expect(subject).toBe("Lo que movieron Globex en los últimos 30 días");
+    expect(body).toContain("Hola Ana,");
+    expect(body).toContain("contra cómo estaba el 15/09/2026");
+    expect(body).toContain("Globex: Globex subió el plan Pro un 20%");
+    expect(body).toContain("- Plan Pro pasó de USD 99 a USD 119");
+    expect(body).toContain("Sin cambios relevantes: Initech.");
+    expect(body).toContain("Brian");
+  });
+
+  it("never reports an unarchived competitor as 'sin cambios'", () => {
+    const { body } = renderProspectingAudit({
+      ...BASE,
+      findings: [FINDING],
+      silentCompetitors: [],
+      unavailableCompetitors: ["Hooli"],
+    });
+
+    expect(body).toContain("No pude comparar (sin versión archivada pública): Hooli.");
+    expect(body).not.toContain("Sin cambios relevantes");
+  });
+
+  it("says 'sin movimientos' when nothing changed, without inventing a movement", () => {
+    const { subject, body } = renderProspectingAudit({
+      ...BASE,
+      findings: [],
+      silentCompetitors: ["Globex", "Initech"],
+      unavailableCompetitors: ["Hooli"],
+    });
+
+    expect(subject).toBe("3 competidores de Acme SaaS: sin movimientos relevantes en 30 días");
+    expect(body).toContain("no encontré movimientos relevantes");
+    expect(body).toContain("Sin cambios relevantes: Globex, Initech.");
+    expect(body).not.toContain("Esto es lo que cambió");
+  });
+
+  it("keeps a competitor block to two bullets so the email stays short", () => {
+    const { body } = renderProspectingAudit({
+      ...BASE,
+      findings: [
+        {
+          ...FINDING,
+          precios: ["P1", "P2", "P3"],
+          posicionamiento: ["Pos1"],
+          productos: ["Prod1"],
+        },
+      ],
+      silentCompetitors: [],
+      unavailableCompetitors: [],
+    });
+
+    for (const bullet of ["- P1", "- P2"]) expect(body).toContain(bullet);
+    expect(body).not.toContain("- P3");
+    expect(body).not.toContain("- Pos1");
+  });
+
+  it("stays below the plain-text body cap and contains no HTML", () => {
+    const { body } = renderProspectingAudit({
+      ...BASE,
+      findings: [FINDING],
+      silentCompetitors: [],
+      unavailableCompetitors: [],
+    });
+
+    expect(body.length).toBeLessThan(2_000);
     expect(body).not.toMatch(/<[a-z/][^>]*>/i);
   });
 });

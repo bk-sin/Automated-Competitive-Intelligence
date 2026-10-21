@@ -133,6 +133,100 @@ export function renderWeeklyDigest(input: DigestInput): RenderedEmail {
   return { subject, body };
 }
 
+export type ProspectingAuditInput = {
+  prospectName: string;
+  contactName?: string;
+  /** Ventana que se le declara al prospecto ("últimos N días"). */
+  days: number;
+  /** Fecha del baseline usado, ya formateada (ej. "15/09/2026"). */
+  baselineLabel: string;
+  findings: readonly Finding[];
+  /** Competidores comparados que no mostraron cambios relevantes. */
+  silentCompetitors: readonly string[];
+  /** Competidores sin snapshot público: NO es lo mismo que "sin cambios". */
+  unavailableCompetitors: readonly string[];
+  senderName?: string;
+  generatedAt: Date;
+  timeZone: string;
+};
+
+function joinNames(names: readonly string[]): string {
+  if (names.length <= 1) return names[0] ?? "";
+  if (names.length === 2) return `${names[0]} y ${names[1]}`;
+  return `${names[0]} y ${names.length - 1} más`;
+}
+
+/**
+ * "Sobre rojo" de prospección: el mismo motor, apuntado a los competidores de
+ * alguien que todavía no es cliente.
+ *
+ * Regla de honestidad: solo se afirma lo que el diff contra el snapshot
+ * público muestra. Un competidor sin snapshot va en su propia línea
+ * ("no pude comparar"), nunca en la de "sin cambios" — si el prospecto entra a
+ * la web y ve un cambio, el email se quema y con él la venta.
+ */
+export function renderProspectingAudit(input: ProspectingAuditInput): RenderedEmail {
+  const findings = orderFindings(input.findings).filter(
+    (finding) => finding.hasMeaningfulChange,
+  );
+
+  const changedNames = findings.map((finding) => finding.competitorName);
+  const subject =
+    findings.length > 0
+      ? `Lo que movieron ${joinNames(changedNames)} en los últimos ${input.days} días`
+      : `${input.silentCompetitors.length + input.unavailableCompetitors.length} competidores de ${
+          input.prospectName
+        }: sin movimientos relevantes en ${input.days} días`;
+
+  const blocks: string[] = [];
+
+  for (const finding of findings) {
+    const details = [
+      ...finding.precios.map((bullet) => `- ${bullet}`),
+      ...finding.posicionamiento.map((bullet) => `- ${bullet}`),
+      ...finding.productos.map((bullet) => `- ${bullet}`),
+    ].slice(0, 2);
+
+    blocks.push(
+      [`${finding.competitorName}: ${finding.headline}`, ...details].join("\n"),
+    );
+  }
+
+  const closing: string[] = [];
+  if (input.silentCompetitors.length > 0) {
+    closing.push(`Sin cambios relevantes: ${input.silentCompetitors.join(", ")}.`);
+  }
+  if (input.unavailableCompetitors.length > 0) {
+    closing.push(
+      `No pude comparar (sin versión archivada pública): ${input.unavailableCompetitors.join(", ")}.`,
+    );
+  }
+
+  const intro =
+    findings.length > 0
+      ? `Comparé la web pública de tus competidores contra cómo estaba el ${input.baselineLabel}. Esto es lo que cambió:`
+      : `Comparé la web pública de tus competidores contra cómo estaba el ${input.baselineLabel} y no encontré movimientos relevantes:`;
+
+  const body = clip(
+    [
+      `Hola ${input.contactName?.trim() || `equipo de ${input.prospectName}`},`,
+      "",
+      intro,
+      "",
+      ...(blocks.length > 0 ? [blocks.join("\n\n"), ""] : []),
+      ...(closing.length > 0 ? [closing.join("\n"), ""] : []),
+      "Es el mismo motor con el que armo el resumen semanal de competencia: precios, planes, posicionamiento y vacantes, sin que nadie del equipo tenga que entrar a mirar las webs.",
+      "",
+      "Si te sirve, respondé este correo y te paso el detalle línea por línea. También me interesa entender cómo lo resuelven hoy.",
+      "",
+      input.senderName?.trim() || "Saludos",
+      `(comparación generada el ${formatDateTime(input.generatedAt, input.timeZone)})`,
+    ].join("\n"),
+  );
+
+  return { subject, body };
+}
+
 export type AlertInput = {
   companyName: string;
   competitorName: string;

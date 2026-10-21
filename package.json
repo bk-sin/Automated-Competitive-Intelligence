@@ -21,6 +21,7 @@
     "smoke:llm": "tsx --env-file=.env scripts/smoke-llm.ts",
     "seed:demo": "tsx --env-file=.env scripts/seed-demo.ts",
     "demo:preview": "tsx --env-file=.env scripts/demo-preview.ts",
+    "prospect:audit": "tsx --env-file=.env scripts/prospect-audit.ts",
     "check:env": "tsx scripts/check-env.ts",
     "check:delivery": "tsx --env-file=.env scripts/check-delivery.ts",
     "alerts:resend": "tsx --env-file=.env scripts/resend-alert.ts",

@@ -141,11 +141,41 @@ DEMO_SEND=1 npm run demo:preview            # además lo manda a la casilla del 
 - Selección: `DEMO_COMPANY`, `DEMO_COMPETITOR`, `DEMO_TO`, `DEMO_PCT` (o `--company=`,
   `--competitor=`, `--to=`, `--pct=`).
 
+#### Sobre rojo de prospección (`prospect:audit`)
+
+`demo:preview` simula el pasado: sirve para un cliente que ya confía en vos, nunca para un
+prospecto frío que puede abrir la web y ver que ese precio nunca existió. Para prospección el
+baseline sale del **archivo público** (Wayback), así que cada afirmación se puede verificar:
+
+```bash
+npx tsx --env-file=.env scripts/prospect-audit.ts --file=prospects/ejemplo.json
+PROSPECT_SEND=1 PROSPECT_TO=persona@empresa.com npx tsx --env-file=.env scripts/prospect-audit.ts --file=...
+```
+
+Va con `tsx` directo porque npm se come `--file=`; también acepta `PROSPECT_FILE`, `PROSPECT_DAYS`,
+`PROSPECT_TO` y `PROSPECT_SEND=1`.
+
+El archivo del prospecto define `prospect`, `contactName`, `senderName`, `replyTo`, `goals`,
+`days` y `competitors[]` con `pricingUrl` / `changelogUrl` / `careersUrl` (hasta 3 páginas por
+competidor). Por cada página busca el snapshot más cercano a "hace N días", scrapea snapshot y
+página de hoy, y corre el mismo diff + LLM del producto. Tres estados posibles:
+
+| Estado | Significado | Qué dice el correo |
+| --- | --- | --- |
+| `changed` | Diff con cambios accionables | El movimiento, con cifras |
+| `silent` | Comparado, sin cambios | "Sin cambios relevantes" |
+| `unavailable` | Sin snapshot, soft-404 o página vacía | "No pude comparar" |
+
+Un competidor sin archivo **nunca** se cuenta como "sin cambios": si el prospecto entra a la web
+y ve un cambio, el mail se quema. El borrador queda en `out/prospecto-<slug>-<fecha>.md` con la
+tabla de estados, la URL del snapshot y los diffs crudos, para defender cada línea antes de
+enviar. No escribe en la base: un prospecto todavía no es cliente.
+
 ### 4. Correr
 
 ```bash
 npm run dev          # http://localhost:3000
-npm test             # 86 tests de la lógica pura
+npm test             # 102 tests de la lógica pura
 npm run typecheck
 npm run build
 ```

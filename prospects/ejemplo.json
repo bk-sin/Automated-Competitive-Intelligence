@@ -1,0 +1,23 @@
+{
+  "prospect": "Acme SaaS",
+  "contactName": "Ana",
+  "senderName": "Brian",
+  "replyTo": "vos@tu-dominio.com",
+  "goals": "Precios, planes y posicionamiento frente a competidores directos",
+  "days": 30,
+  "competitors": [
+    {
+      "name": "Trello",
+      "pricingUrl": "https://trello.com/pricing",
+      "careersUrl": "https://trello.com/jobs"
+    },
+    {
+      "name": "Slack",
+      "pricingUrl": "https://slack.com/pricing"
+    },
+    {
+      "name": "Notion",
+      "pricingUrl": "https://www.notion.so/pricing"
+    }
+  ]
+}
