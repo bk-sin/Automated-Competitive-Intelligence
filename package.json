@@ -1,0 +1,37 @@
+{
+  "name": "inteligencia-competitiva",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "cron:extract": "tsx --env-file=.env scripts/run-extraction.ts",
+    "cron:digest": "tsx --env-file=.env scripts/run-digest.ts",
+    "cron:digest:force": "tsx --env-file=.env scripts/run-digest.ts --force",
+    "smoke:firecrawl": "tsx --env-file=.env scripts/smoke-firecrawl.ts"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.5.2",
+    "@supabase/supabase-js": "^2.45.4",
+    "next": "^15.5.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "zod": "^4.3.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

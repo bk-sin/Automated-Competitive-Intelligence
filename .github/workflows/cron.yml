@@ -1,0 +1,49 @@
+name: cron
+
+on:
+  schedule:
+    # Hourly. Both endpoints are self-throttled:
+    #  - extraction: per-competitor crawl_interval_days
+    #  - weekly-digest: Monday 08:00 in each client's timezone
+    - cron: "0 * * * *"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Ignorar ventanas de tiempo (smoke test)"
+        type: boolean
+        default: false
+
+concurrency:
+  group: cron
+  cancel-in-progress: false
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Extraction
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "Faltan los secrets APP_URL / CRON_SECRET" >&2
+            exit 1
+          fi
+          FORCE=""
+          if [ "${{ inputs.force }}" = "true" ]; then FORCE="?force=1"; fi
+          curl --fail-with-body -sS -X POST \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$APP_URL/api/cron/extraction$FORCE"
+
+      - name: Weekly digest
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          FORCE=""
+          if [ "${{ inputs.force }}" = "true" ]; then FORCE="?force=1"; fi
+          curl --fail-with-body -sS -X POST \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$APP_URL/api/cron/weekly-digest$FORCE"
