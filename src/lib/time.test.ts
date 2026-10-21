@@ -4,6 +4,7 @@ import {
   getWeekBounds,
   isCrawlDue,
   isValidTimeZone,
+  localMidnightUtc,
   shouldSendWeeklyDigest,
   toIsoDate,
 } from "./time";
@@ -67,6 +68,14 @@ describe("getWeekBounds", () => {
     expect(bounds.label).toBe("19/10 al 21/10");
   });
 
+  it("starts at local midnight, not UTC midnight", () => {
+    const bounds = getWeekBounds(new Date("2026-10-21T15:00:00.000Z"), ART);
+    expect(bounds.startInstant).toBe("2026-10-19T03:00:00.000Z");
+
+    const tokyo = getWeekBounds(new Date("2026-10-21T15:00:00.000Z"), TOKYO);
+    expect(tokyo.startInstant).toBe("2026-10-18T15:00:00.000Z");
+  });
+
   it("keeps Monday as the start when the week just began", () => {
     expect(getWeekBounds(MONDAY_8AM_ART, ART).weekStart).toBe("2026-10-19");
   });
@@ -75,6 +84,17 @@ describe("getWeekBounds", () => {
     // Sunday 22:00 in Buenos Aires is already Monday in UTC.
     const bounds = getWeekBounds(new Date("2026-10-19T01:00:00.000Z"), ART);
     expect(bounds.weekStart).toBe("2026-10-12");
+  });
+});
+
+describe("localMidnightUtc", () => {
+  it("converts a civil date to the matching UTC instant", () => {
+    expect(localMidnightUtc(2026, 10, 19, ART).toISOString()).toBe("2026-10-19T03:00:00.000Z");
+    expect(localMidnightUtc(2026, 10, 19, TOKYO).toISOString()).toBe("2026-10-18T15:00:00.000Z");
+  });
+
+  it("handles UTC itself", () => {
+    expect(localMidnightUtc(2026, 10, 19, "UTC").toISOString()).toBe("2026-10-19T00:00:00.000Z");
   });
 });
 

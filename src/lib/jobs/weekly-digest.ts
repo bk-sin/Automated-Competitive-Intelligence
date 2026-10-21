@@ -152,7 +152,7 @@ async function sendDigestForClient({
   }
 
   // The digest covers the current local week up to "now".
-  const since = `${bounds.weekStart}T00:00:00.000Z`;
+  const since = bounds.startInstant;
   const { data: analyses, error } = await db
     .from("analyses")
     .select(

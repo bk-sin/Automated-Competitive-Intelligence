@@ -64,7 +64,7 @@ select id, 'Globex', 'https://globex.com/pricing', 7 from public.clients where e
 
 ```bash
 npm run dev          # http://localhost:3000
-npm test             # 70 tests de la lógica pura
+npm test             # 73 tests de la lógica pura
 npm run typecheck
 npm run build
 ```

@@ -69,6 +69,47 @@ function utcMsToCivil(ms: number): { year: number; month: number; day: number } 
   };
 }
 
+/** Offset (local - UTC) in ms for a given instant and zone, DST included. */
+function getTimeZoneOffsetMs(date: Date, timeZone: string): number {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hour12: false,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+
+  const parts = formatter.formatToParts(date);
+  const read = (type: Intl.DateTimeFormatPartTypes): number =>
+    Number(parts.find((part) => part.type === type)?.value ?? 0);
+
+  const asUtc = Date.UTC(
+    read("year"),
+    read("month") - 1,
+    read("day"),
+    read("hour") % 24,
+    read("minute"),
+    read("second"),
+  );
+
+  return asUtc - date.getTime();
+}
+
+/** UTC instant that corresponds to 00:00 local time on the given civil date. */
+export function localMidnightUtc(
+  year: number,
+  month: number,
+  day: number,
+  timeZone: string,
+): Date {
+  const guess = civilToUtcMs(year, month, day);
+  const offset = getTimeZoneOffsetMs(new Date(guess), timeZone);
+  return new Date(guess - offset);
+}
+
 /**
  * True when the client's local clock is inside the digest window.
  * The cron runs hourly, so a 59-minute window guarantees exactly one hit
@@ -90,7 +131,7 @@ export function shouldSendWeeklyDigest(
 export function getWeekBounds(
   now: Date,
   timeZone: string,
-): { weekStart: string; weekEnd: string; label: string } {
+): { weekStart: string; weekEnd: string; label: string; startInstant: string } {
   const local = getLocalDateParts(now, timeZone);
   const localMs = civilToUtcMs(local.year, local.month, local.day);
   const daysSinceMonday = (local.weekday + 6) % 7;
@@ -105,6 +146,8 @@ export function getWeekBounds(
     weekStart: toIsoDate(start),
     weekEnd: toIsoDate(end),
     label: `${formatShortDate(start)} al ${formatShortDate(end)}`,
+    // 00:00 local on the Monday, expressed as a UTC instant (used as a query bound).
+    startInstant: localMidnightUtc(start.year, start.month, start.day, timeZone).toISOString(),
   };
 }
 
