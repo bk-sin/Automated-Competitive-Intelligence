@@ -20,7 +20,8 @@
     "smoke:firecrawl": "tsx --env-file=.env scripts/smoke-firecrawl.ts",
     "smoke:llm": "tsx --env-file=.env scripts/smoke-llm.ts",
     "seed:demo": "tsx --env-file=.env scripts/seed-demo.ts",
-    "check:env": "tsx scripts/check-env.ts"
+    "check:env": "tsx scripts/check-env.ts",
+    "check:delivery": "tsx --env-file=.env scripts/check-delivery.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",

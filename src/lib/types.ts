@@ -67,6 +67,8 @@ export type AlertRow = {
   body: string;
   sent_at: string | null;
   send_error: string | null;
+  /** id del mensaje en Resend: sirve para auditar la entrega real. */
+  provider_message_id: string | null;
   created_at: string;
 };
 

@@ -204,6 +204,7 @@ async function sendDigestForClient({
       body: rendered.body,
       sent_at: send.ok ? now.toISOString() : null,
       send_error: send.ok ? null : send.error,
+      provider_message_id: send.ok ? send.id : null,
     },
     { onConflict: "client_id,week_start" },
   );

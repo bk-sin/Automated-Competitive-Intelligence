@@ -183,6 +183,30 @@ gh secret set APP_URL --body "https://<proyecto>.vercel.app"
 gh secret set CRON_SECRET --body "<el mismo CRON_SECRET>"
 ```
 
+## Correo y entregabilidad
+
+`sent_at` en `alerts`/`digests` solo prueba que Resend **aceptó** el mensaje. Desde la
+migración `20261021000300_message_ids.sql` guardamos también `provider_message_id`, que es
+lo que permite auditar la entrega real:
+
+```bash
+npm run check:delivery                  # últimos 20 emails y su last_event
+npm run check:delivery -- --limit=50
+npm run check:delivery -- --id=<uuid>   # detalle de uno puntual
+```
+
+Estados que devuelve Resend: `sent` (aceptado, sin confirmación del destinatario),
+`delivered`, `bounced`, `complained`. Un email que sigue en `sent` pasados unos minutos
+**no llegó**: revisar spam, reputación del dominio o la restricción del sandbox.
+
+En una cuenta Resend nueva los primeros envíos suelen quedarse en `sent` aunque después
+todo entregue en segundos: el receptor difiere al remitente sin reputación. Si `check:delivery`
+muestra ese patrón, el problema es el remitente, no el código.
+
+Mientras `EMAIL_FROM` use `onboarding@resend.dev`, Resend solo entrega a la casilla dueña de
+la cuenta y Gmail suele mandarlo a spam. Para producción: verificar un dominio en Resend
+(SPF + DKIM + DMARC), cambiar `EMAIL_FROM` en `.env` y en Vercel, y redeployar.
+
 ## Verificación rápida sin DB ni LLM
 
 ```bash
