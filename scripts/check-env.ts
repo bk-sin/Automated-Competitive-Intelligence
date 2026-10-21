@@ -241,8 +241,14 @@ const PLACEHOLDER = /your-project|your-domain|yourcompany|example\.com|changeme|
 
 const REQUIRED_VARS: Array<{ key: string; hint: string }> = [
   { key: "NEXT_PUBLIC_SUPABASE_URL", hint: "Supabase → Project Settings → Data API → Project URL" },
-  { key: "NEXT_PUBLIC_SUPABASE_ANON_KEY", hint: "Supabase → Settings → API Keys → anon public" },
-  { key: "SUPABASE_SERVICE_ROLE_KEY", hint: "Supabase → Settings → API Keys → service_role (secreta)" },
+  {
+    key: "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+    hint: "Supabase → Settings → API Keys → publishable (o la legacy anon)",
+  },
+  {
+    key: "SUPABASE_SERVICE_ROLE_KEY",
+    hint: "Supabase → Settings → API Keys → secret (o la legacy service_role)",
+  },
   { key: "FIRECRAWL_API_KEY", hint: "firecrawl.dev → API Keys" },
   { key: "LLM_API_KEY", hint: "API key de tu proveedor LLM" },
   { key: "RESEND_API_KEY", hint: "resend.com → API Keys" },
@@ -251,14 +257,34 @@ const REQUIRED_VARS: Array<{ key: string; hint: string }> = [
   { key: "CRON_SECRET", hint: "32+ caracteres aleatorios: openssl rand -hex 32" },
 ];
 
-function readVar(key: string): string {
-  // FIRECLAW_API_KEY is the historical typo still accepted by src/lib/env.ts.
-  const raw =
-    key === "FIRECRAWL_API_KEY"
-      ? (process.env.FIRECRAWL_API_KEY ?? process.env.FIRECLAW_API_KEY ?? "")
-      : (process.env[key] ?? "");
+/** Accepted alternative names (Supabase renamed anon/service_role in 2025). */
+const ALIASES: Record<string, string[]> = {
+  FIRECRAWL_API_KEY: ["FIRECRAWL_API_KEY", "FIRECLAW_API_KEY"],
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: [
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+    "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+  ],
+  SUPABASE_SERVICE_ROLE_KEY: ["SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SECRET_KEY"],
+};
 
-  return raw.trim();
+/** Variables that hold API keys and therefore must never contain a URL. */
+const KEY_VARS = new Set([
+  "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+  "SUPABASE_SERVICE_ROLE_KEY",
+  "FIRECRAWL_API_KEY",
+  "LLM_API_KEY",
+  "RESEND_API_KEY",
+]);
+
+function readVar(key: string): { value: string; source: string } {
+  const names = ALIASES[key] ?? [key];
+
+  for (const name of names) {
+    const value = (process.env[name] ?? "").trim();
+    if (value) return { value, source: name };
+  }
+
+  return { value: "", source: names[0] ?? key };
 }
 
 async function main(): Promise<void> {
@@ -272,8 +298,9 @@ async function main(): Promise<void> {
   const values = new Map<string, string>();
 
   for (const { key, hint } of REQUIRED_VARS) {
-    const value = readVar(key);
+    const { value, source } = readVar(key);
     values.set(key, value);
+    const origin = source === key ? "" : ` [leída de ${source}]`;
 
     if (!value) {
       record(key, "fail", `vacía. ${hint}`);
@@ -285,16 +312,21 @@ async function main(): Promise<void> {
       continue;
     }
 
+    if (KEY_VARS.has(key) && /^https?:\/\//i.test(value)) {
+      record(key, "fail", `parece una URL, no una clave. Revisá ${source}. ${hint}`);
+      continue;
+    }
+
     if (key === "CRON_SECRET" && value.length < 16) {
       record(key, "fail", `muy corto (${value.length} chars, mínimo 16)`);
       continue;
     }
 
-    record(key, "ok", mask(value));
+    record(key, "ok", `${mask(value)}${origin}`);
   }
 
   for (const key of ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_APP_URL"] as const) {
-    const value = values.get(key) ?? readVar(key);
+    const value = values.get(key) || readVar(key).value;
     if (!value || PLACEHOLDER.test(value)) continue;
 
     try {
@@ -305,11 +337,14 @@ async function main(): Promise<void> {
     }
   }
 
+  const usableKey = (value: string | undefined): string =>
+    value && !PLACEHOLDER.test(value) && !/^https?:\/\//i.test(value) ? value : "";
+
   const supabaseUrl = values.get("NEXT_PUBLIC_SUPABASE_URL") ?? "";
-  const serviceKey = values.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  const llmKey = values.get("LLM_API_KEY") ?? "";
-  const resendKey = values.get("RESEND_API_KEY") ?? "";
-  const firecrawlKey = values.get("FIRECRAWL_API_KEY") ?? "";
+  const serviceKey = usableKey(values.get("SUPABASE_SERVICE_ROLE_KEY"));
+  const llmKey = usableKey(values.get("LLM_API_KEY"));
+  const resendKey = usableKey(values.get("RESEND_API_KEY"));
+  const firecrawlKey = usableKey(values.get("FIRECRAWL_API_KEY"));
 
   if (supabaseUrl && serviceKey && !PLACEHOLDER.test(supabaseUrl)) {
     const tables = await Promise.all(
@@ -323,9 +358,9 @@ async function main(): Promise<void> {
   if (llmKey && !PLACEHOLDER.test(llmKey)) {
     lines.push(
       ...(await checkLlm(
-        readVar("LLM_BASE_URL") || "https://api.openai.com/v1",
+        readVar("LLM_BASE_URL").value || "https://api.openai.com/v1",
         llmKey,
-        readVar("LLM_MODEL") || "gpt-4o-mini",
+        readVar("LLM_MODEL").value || "gpt-4o-mini",
       )),
     );
   }

@@ -18,8 +18,9 @@ export function ConfigNotice({ title, description }: { title: string; descriptio
       <div className="container narrow" style={{ padding: "40px 24px 80px" }}>
         <div className="form-card">
           <p>
-            Faltan <code>NEXT_PUBLIC_SUPABASE_URL</code> o{" "}
-            <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code>. Corré{" "}
+            Faltan <code>NEXT_PUBLIC_SUPABASE_URL</code> o la clave pública
+            (<code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> /{" "}
+            <code>NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY</code>). Corré{" "}
             <code>npm run check:env</code> para ver exactamente qué falta y reiniciá el servidor.
           </p>
           <Link href="/" className="button button--ghost">

@@ -6,10 +6,35 @@ import { z } from "zod";
  *
  * NOTE: the historical variable name `FIRECLAW_API_KEY` (typo) is still
  * accepted as a fallback so existing deployments keep working.
+ *
+ * Supabase renamed its API keys (2025): `anon` -> publishable
+ * (`sb_publishable_...`) and `service_role` -> secret (`sb_secret_...`).
+ * Both namings are accepted; the legacy name wins when present.
  */
+
+/** Returns the first non-empty value, trimmed. */
+function pick(...values: Array<string | undefined>): string | undefined {
+  for (const value of values) {
+    const trimmed = value?.trim();
+    if (trimmed) return trimmed;
+  }
+  return undefined;
+}
+
+/** An API key must never be a URL: catches the classic "pasted Project URL" mistake. */
+function apiKey(name: string) {
+  return z
+    .string()
+    .min(1, `${name} is required`)
+    .refine(
+      (value) => !/^https?:\/\//i.test(value),
+      `${name} looks like a URL, not an API key (did you paste the Project URL?)`,
+    );
+}
+
 const serverEnvSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.url(),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1, "SUPABASE_SERVICE_ROLE_KEY is required"),
+  SUPABASE_SERVICE_ROLE_KEY: apiKey("SUPABASE_SERVICE_ROLE_KEY"),
   FIRECRAWL_API_KEY: z.string().min(1, "FIRECRAWL_API_KEY is required"),
   LLM_API_KEY: z.string().min(1, "LLM_API_KEY is required"),
   LLM_BASE_URL: z.url().default("https://api.openai.com/v1"),
@@ -26,10 +51,19 @@ export type ServerEnv = z.infer<typeof serverEnvSchema>;
 let cached: ServerEnv | null = null;
 
 function readRawEnv(): Record<string, string | undefined> {
+  const source = process.env;
+
   return {
-    ...process.env,
-    FIRECRAWL_API_KEY:
-      process.env.FIRECRAWL_API_KEY ?? process.env.FIRECLAW_API_KEY ?? undefined,
+    ...source,
+    FIRECRAWL_API_KEY: pick(source.FIRECRAWL_API_KEY, source.FIRECLAW_API_KEY),
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: pick(
+      source.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      source.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    ),
+    SUPABASE_SERVICE_ROLE_KEY: pick(
+      source.SUPABASE_SERVICE_ROLE_KEY,
+      source.SUPABASE_SECRET_KEY,
+    ),
   };
 }
 
@@ -50,7 +84,7 @@ export function getServerEnv(): ServerEnv {
 
 const publicEnvSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.url(),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1, "NEXT_PUBLIC_SUPABASE_ANON_KEY is required"),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: apiKey("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
   NEXT_PUBLIC_APP_URL: z.url().default("http://localhost:3000"),
 });
 
@@ -65,7 +99,7 @@ let cachedPublic: PublicEnv | null = null;
 export function getPublicEnv(): PublicEnv {
   if (cachedPublic) return cachedPublic;
 
-  const parsed = publicEnvSchema.safeParse(process.env);
+  const parsed = publicEnvSchema.safeParse(readRawEnv());
   if (!parsed.success) {
     const details = parsed.error.issues
       .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
@@ -88,5 +122,5 @@ export function resetServerEnvCache(): void {
  * credentials shows a setup notice instead of crashing with HTTP 500.
  */
 export function isPublicEnvConfigured(): boolean {
-  return publicEnvSchema.safeParse(process.env).success;
+  return publicEnvSchema.safeParse(readRawEnv()).success;
 }

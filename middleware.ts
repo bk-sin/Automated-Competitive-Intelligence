@@ -1,22 +1,24 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { getPublicEnv, isPublicEnvConfigured } from "@/lib/env";
 
 /**
  * Refreshes the Supabase session cookie on every matched request and keeps
  * /dashboard behind magic-link auth (NFR Security).
+ *
+ * Reads the keys through src/lib/env.ts so both Supabase namings work
+ * (legacy anon/service_role and the new publishable/secret keys).
  */
 export async function middleware(request: NextRequest) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!url || !anonKey) {
-    // Misconfigured deployment: let the page render its own error state.
+  if (!isPublicEnvConfigured()) {
+    // Misconfigured deployment: let the page render its own notice.
     return NextResponse.next({ request });
   }
 
   let response = NextResponse.next({ request });
+  const env = getPublicEnv();
 
-  const supabase = createServerClient(url, anonKey, {
+  const supabase = createServerClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
     cookies: {
       getAll: () => request.cookies.getAll(),
       setAll: (cookiesToSet: { name: string; value: string; options: CookieOptions }[]) => {

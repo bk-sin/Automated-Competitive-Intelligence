@@ -35,13 +35,18 @@ En el SQL Editor de Supabase (o con `supabase db push`), ejecutá en orden:
 
 ### 2. Variables de entorno
 
-Ver `.env.example`. Mínimo para el portal: `NEXT_PUBLIC_SUPABASE_URL`,
-`NEXT_PUBLIC_SUPABASE_ANON_KEY`. Para los jobs: `SUPABASE_SERVICE_ROLE_KEY`,
-`FIRECRAWL_API_KEY`, `LLM_API_KEY`, `RESEND_API_KEY`, `EMAIL_FROM`, `ADMIN_EMAIL`,
-`CRON_SECRET`.
+Ver `.env.example`. Mínimo para el portal: `NEXT_PUBLIC_SUPABASE_URL` y una clave
+pública. Para los jobs: una clave de servicio, `FIRECRAWL_API_KEY`,
+`LLM_API_KEY`, `RESEND_API_KEY`, `EMAIL_FROM`, `ADMIN_EMAIL`, `CRON_SECRET`.
 
-> El nombre histórico `FIRECLAW_API_KEY` (typo) se acepta como fallback de
-> `FIRECRAWL_API_KEY` en `src/lib/env.ts`, para no romper deploys existentes.
+| Nombres aceptados | Cuándo usarlo |
+| --- | --- |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` / `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | clave pública del proyecto (`sb_publishable_...` en el dashboard nuevo) |
+| `SUPABASE_SERVICE_ROLE_KEY` / `SUPABASE_SECRET_KEY` | clave de servicio (`sb_secret_...` en el dashboard nuevo), sólo server-side |
+| `FIRECRAWL_API_KEY` / `FIRECLAW_API_KEY` | el segundo es el typo histórico, se acepta como fallback |
+
+`src/lib/env.ts` resuelve los alias en un solo lugar y rechaza claves con forma de
+URL (el error clásico de pegar el Project URL en el campo de la key).
 
 Verificá el estado real de la configuración en cualquier momento:
 
@@ -60,6 +65,15 @@ Si el portal se despliega sin las claves públicas de Supabase, `/login`, `/onbo
 y `/dashboard` muestran un aviso de configuración pendiente en lugar de un error 500.
 
 ### 3. Primer cliente (setup concierge, semi-manual)
+
+Para demos y pruebas end-to-end hay un atajo idempotente (crea el usuario de auth,
+el cliente y dos competidores reales):
+
+```bash
+npm run seed:demo -- --email=persona@empresa.com
+```
+
+A mano: paso 1 y 2 del bloque SQL de abajo.
 
 1. En Supabase → Authentication → Invite, creá el usuario del cliente.
 2. Copiá su `user_id` y ejecutá:

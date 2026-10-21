@@ -17,6 +17,8 @@
     "cron:digest": "tsx --env-file=.env scripts/run-digest.ts",
     "cron:digest:force": "tsx --env-file=.env scripts/run-digest.ts --force",
     "smoke:firecrawl": "tsx --env-file=.env scripts/smoke-firecrawl.ts",
+    "smoke:llm": "tsx --env-file=.env scripts/smoke-llm.ts",
+    "seed:demo": "tsx --env-file=.env scripts/seed-demo.ts",
     "check:env": "tsx scripts/check-env.ts"
   },
   "dependencies": {
