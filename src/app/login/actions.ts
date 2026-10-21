@@ -1,6 +1,8 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { resolveAppOrigin } from "@/lib/app-origin";
 import { getPublicEnv } from "@/lib/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -16,12 +18,21 @@ export async function signInAction(formData: FormData): Promise<void> {
 
   try {
     const supabase = await createSupabaseServerClient();
-    const env = getPublicEnv();
+    const headerList = await headers();
+
+    // El origen sale del request: en producción no depende de que
+    // NEXT_PUBLIC_APP_URL esté bien cargado en cada entorno.
+    const origin = resolveAppOrigin({
+      host: headerList.get("x-forwarded-host") ?? headerList.get("host"),
+      proto: headerList.get("x-forwarded-proto"),
+      fallback: getPublicEnv().NEXT_PUBLIC_APP_URL,
+    });
 
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: `${env.NEXT_PUBLIC_APP_URL}/auth/callback` },
+      options: { emailRedirectTo: `${origin}/auth/callback` },
     });
+
 
     if (error) {
       console.error("[login] Supabase rechazó el magic link:", error.message);

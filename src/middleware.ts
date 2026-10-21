@@ -10,6 +10,35 @@ import { getPublicEnv, isPublicEnvConfigured } from "@/lib/env";
  * (legacy anon/service_role and the new publishable/secret keys).
  */
 export async function middleware(request: NextRequest) {
+  const { pathname, searchParams } = request.nextUrl;
+
+  // El link del magic link puede caer en cualquier ruta: si el `redirect_to` no
+  // está en la lista blanca de Supabase (o el Site URL del proyecto no apunta al
+  // callback), el código llega a la home, a /login o a /dashboard. Se reenvía al
+  // callback en vez de perder la sesión, que es lo que pasaba antes.
+  const code = searchParams.get("code");
+  if (code && pathname !== "/auth/callback") {
+    const target = request.nextUrl.clone();
+    target.pathname = "/auth/callback";
+    target.search = "";
+    target.searchParams.set("code", code);
+
+    const next = searchParams.get("next");
+    if (next?.startsWith("/")) target.searchParams.set("next", next);
+
+    return NextResponse.redirect(target);
+  }
+
+  const needsAuth =
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/auth");
+
+  if (!needsAuth) {
+    // La landing es pública: no se toca Supabase para no pagar un round trip.
+    return NextResponse.next({ request });
+  }
+
   if (!isPublicEnvConfigured()) {
     // Misconfigured deployment: let the page render its own notice.
     return NextResponse.next({ request });
@@ -49,5 +78,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/login", "/auth/:path*"],
+  // "/" entra al matcher sólo para rescatar un `?code=` que Supabase dejó en el
+  // Site URL; el resto de la landing sale sin tocar la sesión.
+  matcher: ["/", "/dashboard/:path*", "/login", "/auth/:path*"],
 };

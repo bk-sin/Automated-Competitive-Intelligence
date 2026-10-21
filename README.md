@@ -274,6 +274,55 @@ gh secret set APP_URL --body "https://<proyecto>.vercel.app"
 gh secret set CRON_SECRET --body "<el mismo CRON_SECRET>"
 ```
 
+## Login (magic links)
+
+El mail de acceso lo manda Supabase, no la app. Si llega en inglés o vuelve a `localhost`, no
+es la aplicación:
+
+| Síntoma | Causa | Arreglo |
+| --- | --- | --- |
+| Mail en inglés, desde `noreply@mail.app.supabase.io` | plantilla de fábrica | configurar SMTP propio (abajo); en el plan free Supabase **no deja** editar la plantilla mientras use su proveedor |
+| El link te devuelve a `http://localhost:3000` | `Site URL` en localhost y `Redirect URLs` vacía | `Site URL` = dominio público; cada origen con `/**` en `Redirect URLs` |
+
+Supabase no falla cuando el `redirect_to` no está permitido: lo cambia por el `Site URL` sin
+avisar. Por eso pedir el link desde producción y aterrizar en localhost parece un bug del
+código. Se audita con:
+
+```bash
+npm run check:auth                                   # usa NEXT_PUBLIC_APP_URL
+npm run check:auth -- https://<proyecto>.vercel.app  # y cualquier otro dominio
+```
+
+Firma un link real (no envía email; necesita una cuenta existente en `ADMIN_EMAIL`) y muestra,
+por origen, si Supabase lo acepta o lo reemplaza. Sale con código 1 si alguno se rechaza.
+
+**Plantilla en español.** Se destraba al configurar SMTP propio — con Resend: `smtp.resend.com`,
+puerto `465`, usuario `resend`, contraseña = `RESEND_API_KEY`, y el remitente de un dominio
+verificado. Recién ahí Supabase acepta el asunto y el cuerpo:
+
+- Asunto: `Tu link para entrar a Radar Competitivo`
+- Cuerpo:
+
+```html
+<h2>Entrar a tu radar competitivo</h2>
+<p>Hacé clic en el botón para entrar al portal. El link vence en una hora y se puede usar una sola vez.</p>
+<p><a href="{{ .ConfirmationURL }}">Entrar al portal</a></p>
+<p>Si no pediste este link, ignorá este correo: no cambia nada.</p>
+<p>— Radar Competitivo</p>
+```
+
+> Con el remitente de prueba `onboarding@resend.dev` Resend solo entrega al dueño de la cuenta.
+> El dominio tiene que estar verificado (SPF/DKIM) antes de mandarle el acceso a un cliente.
+
+**PKCE.** El link guarda su verificador en una cookie del navegador que lo pidió: abrirlo en otro
+dispositivo falla por diseño. `/auth/callback` distingue ese caso de un link vencido y pide abrirlo
+en el mismo navegador. El middleware (`src/middleware.ts`) además rescata un `?code=` que caiga en
+cualquier ruta, así que un `Site URL` mal configurado ya no pierde la sesión.
+
+> Con `src/app`, Next solo levanta el middleware si vive en `src/`: el `middleware.ts` de la raíz
+> nunca se ejecutó. Si se mueve de lugar, verificarlo en el build (`ƒ Middleware` en la tabla de
+> rutas); sin esa línea, no hay refresh de sesión ni protección de `/dashboard`.
+
 ## Correo y entregabilidad
 
 `sent_at` en `alerts`/`digests` solo prueba que Resend **aceptó** el mensaje. Desde la

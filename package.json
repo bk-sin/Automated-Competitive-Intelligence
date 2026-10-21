@@ -23,6 +23,7 @@
     "demo:preview": "tsx --env-file=.env scripts/demo-preview.ts",
     "prospect:audit": "tsx --env-file=.env scripts/prospect-audit.ts",
     "check:env": "tsx scripts/check-env.ts",
+    "check:auth": "tsx --env-file=.env scripts/check-auth-link.ts",
     "check:delivery": "tsx --env-file=.env scripts/check-delivery.ts",
     "alerts:resend": "tsx --env-file=.env scripts/resend-alert.ts",
     "alerts:resend:preview": "tsx --env-file=.env scripts/resend-alert.ts --preview"
