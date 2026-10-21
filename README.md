@@ -152,6 +152,37 @@ npm run cron:extract:force
 npm run cron:digest:force
 ```
 
+## Deploy en Vercel
+
+```bash
+vercel link
+vercel env add NEXT_PUBLIC_SUPABASE_URL --environment 'production,preview' --value "https://<ref>.supabase.co" --yes
+vercel env add NEXT_PUBLIC_APP_URL --environment 'production,preview,development' --value "https://<proyecto>.vercel.app" --yes
+# ... una por variable
+vercel --prod
+```
+
+Se cargan las mismas variables que `.env`, salvo `SUPABASE_ACCESS_TOKEN` (solo tooling local).
+`NEXT_PUBLIC_APP_URL` tiene que ser el dominio de producción, no `localhost`: es el que usan
+los magic links.
+
+Dos cosas dejan el portal inutilizable si se olvidan:
+
+- **Deployment Protection**: el default de Vercel es `all_except_custom_domains`, así que el
+  `*.vercel.app` queda detrás de Vercel Authentication. `/dashboard` te manda al login de
+  Vercel en vez de al del portal y el cron responde 401. Se apaga con
+  `vercel project protection disable <proyecto> --sso`.
+- **CLI viejo**: los endpoints de deploy exigen Vercel CLI 47.2.2 o superior. Si
+  `vercel --version` devuelve 44.x (instalación global de pnpm, por ejemplo), actualizá con
+  `pnpm add -g vercel@latest`.
+
+Los secretos del repo para el cron de Actions:
+
+```bash
+gh secret set APP_URL --body "https://<proyecto>.vercel.app"
+gh secret set CRON_SECRET --body "<el mismo CRON_SECRET>"
+```
+
 ## Verificación rápida sin DB ni LLM
 
 ```bash
