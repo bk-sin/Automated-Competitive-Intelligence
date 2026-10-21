@@ -78,13 +78,18 @@ function shiftPrices(markdown: string, percent: number): { text: string; count: 
   };
 
   const amount = String.raw`\d{1,3}(?:[.,]\d{3})+|\d{3,}`;
-  const text = markdown
-    .replace(new RegExp(String.raw`\$\s?(${amount})`, "g"), (_match, raw: string) =>
-      `$${rewrite(raw)}`,
-    )
-    .replace(new RegExp(String.raw`(${amount})(\s?\$)`, "g"), (_match, raw: string, tail: string) =>
-      `${rewrite(raw)}${tail}`,
-    );
+  // Una sola pasada con alternancia: si el símbolo viene antes Y después del
+  // número (`$30.000 $`), cada match se reescribe una única vez.
+  const pattern = new RegExp(String.raw`\$(\s?)(${amount})|(${amount})(\s?\$)`, "g");
+
+  const text = markdown.replace(
+    pattern,
+    (match: string, before: string, prefixed?: string, suffixed?: string, tail?: string) => {
+      if (prefixed) return `$${before}${rewrite(prefixed)}`;
+      if (suffixed) return `${rewrite(suffixed)}${tail ?? ""}`;
+      return match;
+    },
+  );
 
   return { text, count };
 }
