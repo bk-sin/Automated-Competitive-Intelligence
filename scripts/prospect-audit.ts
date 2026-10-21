@@ -376,7 +376,8 @@ async function main(): Promise<void> {
 
   if (!request.file) {
     console.error(
-      "Falta el archivo del prospecto: --file=prospects/acme.json (o PROSPECT_FILE).",
+      "Falta el archivo del prospecto: npm run prospect:audit -- prospects/acme.json " +
+        "(o --file=..., o PROSPECT_FILE).",
     );
     process.exitCode = 1;
     return;
@@ -459,7 +460,8 @@ async function main(): Promise<void> {
 
   if (!request.send) {
     console.log(
-      "Nada se envió. Para mandarlo: PROSPECT_SEND=1 npm run prospect:audit -- --file=... --to=...",
+      "Nada se envió. Para mandarlo: PROSPECT_SEND=1 PROSPECT_TO=vos@dominio.com " +
+        "npm run prospect:audit -- prospects/archivo.json",
     );
     return;
   }

@@ -1,0 +1,14 @@
+{
+  "prospect": "Prueba rápida",
+  "contactName": "vos",
+  "senderName": "Brian",
+  "replyTo": "vos@tu-dominio.com",
+  "goals": "Precios y planes",
+  "days": 30,
+  "competitors": [
+    {
+      "name": "Trello",
+      "pricingUrl": "https://trello.com/pricing"
+    }
+  ]
+}

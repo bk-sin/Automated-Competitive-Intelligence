@@ -158,7 +158,7 @@ describe("renderProspectingAudit", () => {
       unavailableCompetitors: [],
     });
 
-    expect(subject).toBe("Lo que movieron Globex en los últimos 30 días");
+    expect(subject).toBe("Lo que movió Globex en los últimos 30 días");
     expect(body).toContain("Hola Ana,");
     expect(body).toContain("contra cómo estaba el 15/09/2026");
     expect(body).toContain("Globex: Globex subió el plan Pro un 20%");

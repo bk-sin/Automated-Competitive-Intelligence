@@ -148,12 +148,17 @@ prospecto frío que puede abrir la web y ver que ese precio nunca existió. Para
 baseline sale del **archivo público** (Wayback), así que cada afirmación se puede verificar:
 
 ```bash
-npx tsx --env-file=.env scripts/prospect-audit.ts --file=prospects/ejemplo.json
-PROSPECT_SEND=1 PROSPECT_TO=persona@empresa.com npx tsx --env-file=.env scripts/prospect-audit.ts --file=...
+npm run prospect:audit -- prospects/ejemplo.json          # 3 competidores, 5 páginas
+npm run prospect:audit -- prospects/prueba-rapida.json    # 1 competidor, 1 página (~30 s)
 ```
 
-Va con `tsx` directo porque npm se come `--file=`; también acepta `PROSPECT_FILE`, `PROSPECT_DAYS`,
-`PROSPECT_TO` y `PROSPECT_SEND=1`.
+El archivo va como argumento posicional: npm se come `--flag=valor` en Windows, así que
+`--file=...` solo funciona invocando `tsx` directo. También acepta `PROSPECT_FILE`, `PROSPECT_DAYS`,
+`PROSPECT_TO` y `PROSPECT_SEND=1`:
+
+```bash
+PROSPECT_SEND=1 PROSPECT_TO=persona@empresa.com npm run prospect:audit -- prospects/ejemplo.json
+```
 
 El archivo del prospecto define `prospect`, `contactName`, `senderName`, `replyTo`, `goals`,
 `days` y `competitors[]` con `pricingUrl` / `changelogUrl` / `careersUrl` (hasta 3 páginas por

@@ -172,11 +172,13 @@ export function renderProspectingAudit(input: ProspectingAuditInput): RenderedEm
 
   const changedNames = findings.map((finding) => finding.competitorName);
   const subject =
-    findings.length > 0
-      ? `Lo que movieron ${joinNames(changedNames)} en los últimos ${input.days} días`
-      : `${input.silentCompetitors.length + input.unavailableCompetitors.length} competidores de ${
-          input.prospectName
-        }: sin movimientos relevantes en ${input.days} días`;
+    findings.length === 1
+      ? `Lo que movió ${changedNames[0]} en los últimos ${input.days} días`
+      : findings.length > 1
+        ? `Lo que movieron ${joinNames(changedNames)} en los últimos ${input.days} días`
+        : `${input.silentCompetitors.length + input.unavailableCompetitors.length} competidores de ${
+            input.prospectName
+          }: sin movimientos relevantes en ${input.days} días`;
 
   const blocks: string[] = [];
 
