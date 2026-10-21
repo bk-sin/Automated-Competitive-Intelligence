@@ -70,8 +70,15 @@ Para demos y pruebas end-to-end hay un atajo idempotente (crea el usuario de aut
 el cliente y dos competidores reales):
 
 ```bash
-npm run seed:demo -- --email=persona@empresa.com
+npm run seed:demo                                   # usa ADMIN_EMAIL como casilla del cliente
+SEED_EMAIL=persona@empresa.com npm run seed:demo    # macOS / Linux
 ```
+
+En PowerShell: `$env:SEED_EMAIL="persona@empresa.com"; npm run seed:demo`.
+
+> npm 10 en Windows se queda con `--force` antes de pasar los argumentos al script. Por eso
+> los comandos que necesitan flags tienen script propio (`cron:extract:force`,
+> `cron:digest:force`) y el seed lee el email de `SEED_EMAIL`.
 
 A mano: paso 1 y 2 del bloque SQL de abajo.
 
@@ -87,14 +94,14 @@ insert into public.competitors (client_id, name, url, crawl_interval_days)
 select id, 'Globex', 'https://globex.com/pricing', 7 from public.clients where email = 'cliente@empresa.com';
 ```
 
-3. Corré el primer rastreo: `npm run cron:extract -- --force` (la primera corrida guarda
+3. Corré el primer rastreo: `npm run cron:extract:force` (la primera corrida guarda
    la línea base; el análisis aparece a partir de la segunda).
 
 ### 4. Correr
 
 ```bash
 npm run dev          # http://localhost:3000
-npm test             # 73 tests de la lógica pura
+npm test             # 83 tests de la lógica pura
 npm run typecheck
 npm run build
 ```
@@ -141,6 +148,7 @@ También aceptan `?force=1` para pruebas manuales:
 
 ```bash
 curl -X POST -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/extraction?force=1"
+npm run cron:extract:force
 npm run cron:digest:force
 ```
 

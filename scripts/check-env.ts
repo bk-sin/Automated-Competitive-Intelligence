@@ -161,6 +161,26 @@ async function checkResend(apiKey: string, from: string): Promise<Line[]> {
       .filter((domain) => domain.status === "verified")
       .map((domain) => domain.name)
       .filter((name): name is string => Boolean(name));
+    const fromDomain = from.match(/@([^>\s]+)/)?.[1] ?? "";
+
+    const verifiedLine: Line =
+      verified.length > 0
+        ? { label: "dominio verificado", status: "ok", detail: verified.join(", ") }
+        : { label: "dominio verificado", status: "warn", detail: "ninguno verificado todavía" };
+
+    // Resend's shared sandbox sender needs no DNS, but only delivers to the
+    // address that owns the Resend account. Fine for demos, never for clients.
+    if (fromDomain === "resend.dev") {
+      return [
+        verifiedLine,
+        {
+          label: "EMAIL_FROM",
+          status: "warn",
+          detail:
+            "sandbox (onboarding@resend.dev): sólo llega al email dueño de la cuenta; verificá un dominio antes de producción",
+        },
+      ];
+    }
 
     if (verified.length === 0) {
       return [
@@ -172,13 +192,12 @@ async function checkResend(apiKey: string, from: string): Promise<Line[]> {
       ];
     }
 
-    const fromDomain = from.match(/@([^>\s]+)/)?.[1] ?? "";
     const matches = verified.some(
       (domain) => fromDomain === domain || fromDomain.endsWith(`.${domain}`),
     );
 
     return [
-      { label: "dominio verificado", status: "ok", detail: verified.join(", ") },
+      verifiedLine,
       {
         label: "EMAIL_FROM",
         status: matches ? "ok" : "fail",
@@ -396,7 +415,7 @@ async function main(): Promise<void> {
   }
 
   console.log("\nConfiguración completa. Siguiente paso:");
-  console.log("  npm run cron:extract -- --force   # primer relevamiento (guarda la línea base)");
+  console.log("  npm run cron:extract:force   # primer relevamiento (guarda la línea base)");
 }
 
 main().catch((error) => {

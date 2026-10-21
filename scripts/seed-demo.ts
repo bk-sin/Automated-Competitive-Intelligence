@@ -19,7 +19,29 @@ const DEMO_COMPETITORS = [
 function readFlag(name: string): string | undefined {
   const prefix = `--${name}=`;
   const match = process.argv.find((argument) => argument.startsWith(prefix));
-  return match ? match.slice(prefix.length).trim() : undefined;
+  if (match) return match.slice(prefix.length).trim();
+
+  // Also accept the space-separated form (`--email foo@bar.com`).
+  const index = process.argv.indexOf(`--${name}`);
+  return index !== -1 ? process.argv[index + 1]?.trim() : undefined;
+}
+
+const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+/**
+ * npm on Windows does not always forward `--flag=value` to the script, so the
+ * recipient can also come from the environment (`SEED_EMAIL`) or fall back to
+ * the internal inbox.
+ */
+function resolveEmail(): string {
+  const candidates = [readFlag("email"), process.env.SEED_EMAIL, process.env.ADMIN_EMAIL];
+
+  for (const candidate of candidates) {
+    const value = candidate?.trim();
+    if (value && EMAIL_PATTERN.test(value)) return value;
+  }
+
+  return "";
 }
 
 function readEnv(name: string, alias?: string): string {
@@ -56,9 +78,12 @@ async function main(): Promise<void> {
     return;
   }
 
-  const email = readFlag("email");
-  if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-    console.error("Pasá un email real con --email=persona@empresa.com (ahí llega el magic link).");
+  const email = resolveEmail();
+  if (!email) {
+    console.error(
+      "Falta el email del cliente demo: usá --email=persona@empresa.com, " +
+        "definí SEED_EMAIL o completá ADMIN_EMAIL.",
+    );
     process.exitCode = 1;
     return;
   }

@@ -14,6 +14,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "cron:extract": "tsx --env-file=.env scripts/run-extraction.ts",
+    "cron:extract:force": "tsx --env-file=.env scripts/run-extraction.ts --force",
     "cron:digest": "tsx --env-file=.env scripts/run-digest.ts",
     "cron:digest:force": "tsx --env-file=.env scripts/run-digest.ts --force",
     "smoke:firecrawl": "tsx --env-file=.env scripts/smoke-firecrawl.ts",
