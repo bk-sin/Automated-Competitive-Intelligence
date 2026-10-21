@@ -16,18 +16,26 @@ export const maxDuration = 300;
  *   "$APP_URL/api/cron/extraction?force=1"
  */
 async function handle(request: Request) {
-  let env;
-  try {
-    env = getServerEnv();
-  } catch (error) {
-    return NextResponse.json(
-      { ok: false, error: (error as Error).message },
-      { status: 500 },
-    );
+  // Auth first: an unauthenticated probe must never learn the config state.
+  const cronSecret = process.env.CRON_SECRET?.trim();
+  if (!cronSecret) {
+    console.error("[cron:extraction] CRON_SECRET no configurado: se rechazan todas las llamadas");
+    return NextResponse.json({ ok: false, error: "Cron no configurado" }, { status: 503 });
   }
 
-  if (!isAuthorizedCron(request, env.CRON_SECRET)) {
+  if (!isAuthorizedCron(request, cronSecret)) {
     return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 401 });
+  }
+
+  // Fail fast, with a generic message, if server secrets are incomplete.
+  try {
+    getServerEnv();
+  } catch (error) {
+    console.error("[cron:extraction] configuración incompleta:", (error as Error).message);
+    return NextResponse.json(
+      { ok: false, error: "Configuración incompleta del servidor" },
+      { status: 500 },
+    );
   }
 
   const url = new URL(request.url);
