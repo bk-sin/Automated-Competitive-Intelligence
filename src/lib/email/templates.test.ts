@@ -187,10 +187,36 @@ describe("renderProspectingAudit", () => {
       unavailableCompetitors: ["Hooli"],
     });
 
-    expect(subject).toBe("3 competidores de Acme SaaS: sin movimientos relevantes en 30 días");
+    expect(subject).toBe("2 competidores de Acme SaaS: sin movimientos en los últimos 30 días");
     expect(body).toContain("no encontré movimientos relevantes");
     expect(body).toContain("Sin cambios relevantes: Globex, Initech.");
     expect(body).not.toContain("Esto es lo que cambió");
+  });
+
+  it("does not claim 'sin movimientos' when nothing could be compared at all", () => {
+    const { subject, body } = renderProspectingAudit({
+      ...BASE,
+      findings: [],
+      silentCompetitors: [],
+      unavailableCompetitors: ["Hooli"],
+    });
+
+    expect(subject).toBe("Sin versión archivada de Hooli: no pude comparar");
+    expect(body).not.toContain("no encontré movimientos relevantes");
+    expect(body).toContain("no hay versión guardada de esas páginas");
+    expect(body).toContain("No pude comparar (sin versión archivada pública): Hooli.");
+  });
+
+  it("names the baseline date instead of a long day count", () => {
+    const { subject } = renderProspectingAudit({
+      ...BASE,
+      days: 1785,
+      findings: [FINDING],
+      silentCompetitors: [],
+      unavailableCompetitors: [],
+    });
+
+    expect(subject).toBe("Lo que movió Globex desde el 15/09/2026");
   });
 
   it("keeps a competitor block to two bullets so the email stays short", () => {

@@ -118,3 +118,18 @@ Y una regla que no está en el playbook: **nunca mandar un sobre rojo desde el s
 (`algo@resend.dev`). Solo entrega a la casilla dueña de la cuenta; a un prospecto le llega rebotado
 y perdés el dominio. Verificar dominio (SPF/DKIM/DMARC) antes del primer envío frío.
 
+### Cobertura medida en servicios locales (importa antes de prometer nada)
+
+| Página | Snapshots |
+| --- | --- |
+| `barberiaalcatraz.setmore.com` | 0 (nunca) |
+| `hairhoodstudio.setmore.com` | 0 (nunca) |
+| `elgranpatron.com` | 1, dic-2021, sin código 200 → se descarta |
+| `fresha.com/pricing`, `setmore.com/pricing` | sí, oct-2026 |
+
+Para barberías **no se puede afirmar** "tu competidor cambió el precio": la página de reservas de
+cada local no está archivada. Lo que sí es comparable es la plataforma donde publican el precio
+(Fresha, Setmore, Booksy — Booksy tampoco está, revisar caso por caso). El script lo dice como
+"no pude comparar" y, si no comparó **ninguna** página, se niega a enviar: un correo que solo dice
+"no pude comparar" no es una propuesta.
+

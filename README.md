@@ -172,7 +172,15 @@ página de hoy, y corre el mismo diff + LLM del producto. Tres estados posibles:
 | `unavailable` | Sin snapshot, soft-404 o página vacía | "No pude comparar" |
 
 Un competidor sin archivo **nunca** se cuenta como "sin cambios": si el prospecto entra a la web
-y ve un cambio, el mail se quema. El borrador queda en `out/prospecto-<slug>-<fecha>.md` con la
+y ve un cambio, el mail se quema. Si **ninguna** página se pudo comparar, el script no envía: un
+correo que solo dice "no pude comparar" no es una propuesta.
+
+> Cobertura real, medida: `barberiaalcatraz.setmore.com` y `hairhoodstudio.setmore.com` tienen **0
+> snapshots** en toda su historia. En servicios locales el local no está archivado; sí la
+> plataforma donde publica precios (Fresha, Setmore). Revisar con `curl` al CDX antes de prometerle
+> una comparación a alguien.
+
+El borrador queda en `out/prospecto-<slug>-<fecha>.md` con la
 tabla de estados, la URL del snapshot y los diffs crudos, para defender cada línea antes de
 enviar. No escribe en la base: un prospecto todavía no es cliente.
 

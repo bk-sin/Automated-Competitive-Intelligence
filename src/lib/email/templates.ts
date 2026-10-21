@@ -171,14 +171,21 @@ export function renderProspectingAudit(input: ProspectingAuditInput): RenderedEm
   );
 
   const changedNames = findings.map((finding) => finding.competitorName);
+  // "en los últimos 1785 días" no le dice nada a nadie: para ventanas largas
+  // se nombra la fecha del baseline.
+  const window =
+    input.days <= 120 ? `en los últimos ${input.days} días` : `desde el ${input.baselineLabel}`;
+
   const subject =
     findings.length === 1
-      ? `Lo que movió ${changedNames[0]} en los últimos ${input.days} días`
+      ? `Lo que movió ${changedNames[0]} ${window}`
       : findings.length > 1
-        ? `Lo que movieron ${joinNames(changedNames)} en los últimos ${input.days} días`
-        : `${input.silentCompetitors.length + input.unavailableCompetitors.length} competidores de ${
-            input.prospectName
-          }: sin movimientos relevantes en ${input.days} días`;
+        ? `Lo que movieron ${joinNames(changedNames)} ${window}`
+        : input.silentCompetitors.length > 0
+          ? `${input.silentCompetitors.length} ${
+              input.silentCompetitors.length === 1 ? "competidor" : "competidores"
+            } de ${input.prospectName}: sin movimientos ${window}`
+          : `Sin versión archivada de ${joinNames(input.unavailableCompetitors)}: no pude comparar`;
 
   const blocks: string[] = [];
 
@@ -204,10 +211,15 @@ export function renderProspectingAudit(input: ProspectingAuditInput): RenderedEm
     );
   }
 
+  // Tres aperturas distintas: con cambios, sin cambios pero con algo comparado, y
+  // sin nada comparable. La tercera NO puede decir "no encontré movimientos": eso
+  // afirmaría algo sobre unas páginas que nunca se miraron.
   const intro =
     findings.length > 0
       ? `Comparé la web pública de tus competidores contra cómo estaba el ${input.baselineLabel}. Esto es lo que cambió:`
-      : `Comparé la web pública de tus competidores contra cómo estaba el ${input.baselineLabel} y no encontré movimientos relevantes:`;
+      : input.silentCompetitors.length > 0
+        ? `Comparé la web pública de tus competidores contra cómo estaba el ${input.baselineLabel} y no encontré movimientos relevantes:`
+        : `Quise comparar la web pública de tus competidores contra el archivo público de internet, pero no hay versión guardada de esas páginas: prefiero decírtelo antes que inventar un cambio.`;
 
   const body = clip(
     [

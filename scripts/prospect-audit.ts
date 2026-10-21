@@ -14,8 +14,10 @@ import { findSnapshot } from "../src/lib/wayback";
  * Auditor de prospeccion: el "sobre rojo" del playbook (docs/prospection-spec.md)
  * generado con datos reales.
  *
- *   npm run prospect:audit -- --file=prospects/ejemplo.json
- *   PROSPECT_SEND=1 npm run prospect:audit -- --file=... --to=yo@dominio.com
+ *   npm run prospect:audit -- prospects/ejemplo.json
+ *   PROSPECT_SEND=1 PROSPECT_TO=yo@dominio.com npm run prospect:audit -- prospects/ejemplo.json
+ *
+ * (el archivo va posicional: npm se come `--flag=valor` en Windows)
  *
  * Por que no usa `demo:preview`: ese simula el pasado corriendo los precios -10%,
  * que sirve para mostrar el producto a un cliente que ya confia. Un prospecto
@@ -457,6 +459,17 @@ async function main(): Promise<void> {
   await mkdir(dirname(draftPath), { recursive: true });
   await writeFile(draftPath, `${renderDraft(prospect, audits, email, generatedAt)}\n`, "utf8");
   console.log(`\nBorrador con fuentes y diffs: ${draftPath}`);
+
+  // Si no se comparó ni una página, el correo no tiene nada que ofrecer. No se
+  // manda: "no pude comparar" es honesto pero no es una propuesta.
+  if (findings.length === 0 && silentCompetitors.length === 0) {
+    console.error(
+      "\nNingún competidor se pudo comparar: no hay versión archivada de esas páginas " +
+        "en la ventana pedida. El borrador queda para revisión, pero no se manda.",
+    );
+    process.exitCode = 1;
+    return;
+  }
 
   if (!request.send) {
     console.log(
